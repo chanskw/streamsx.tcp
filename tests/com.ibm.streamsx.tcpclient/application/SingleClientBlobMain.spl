@@ -1,0 +1,67 @@
+namespace application ;
+
+use com.ibm.streamsx.tcpclient::* ;
+
+composite SingleClientBlobMain
+{
+	param
+		expression<rstring> $host : "d0101b09" ;
+		expression<int32> $port : 22222 ;
+		expression<uint32> $numIter : 10000000u ;
+	graph
+		(stream<rstring line> Beacon_1_out0) as Beacon_1 = Custom()
+		{
+			logic
+				onProcess :
+				{
+					mutable uint32 cnt = 0u ;
+					while(cnt < $numIter)
+					{
+						submit({ line = getRequest("1|" +(rstring) cnt + "|") + "\n" },
+							Beacon_1_out0) ;
+						cnt ++ ;
+						block(0.001) ;
+					}
+
+					while(! isShutdown())
+					{
+						spl.utility::block(1000.0) ;
+					}
+
+				}
+
+		}
+
+		(stream<rstring line> TcpDuplexClient_2_out0) as TcpDuplexClient_2 =
+			TcpDuplexClient(Beacon_1_out0)
+		{
+			param
+				host : $host ;
+				port : $port ;
+				binary: true;
+		}
+
+		() as FileSink_3 = FileSink(Functor_5_out0 as inPort0Alias)
+		{
+			param
+				file : "responses.act" ;
+				flush : 1u ;
+		}
+
+		() as FileSink_4 = FileSink(Beacon_1_out0)
+		{
+			param
+				file : "response.exp" ;
+				flush : 1u ;
+		}
+
+		(stream<rstring line> Functor_5_out0) as Functor_5 =
+			Functor(TcpDuplexClient_2_out0)
+		{
+			output
+				Functor_5_out0 : line = line ;
+		}
+
+}
+
+

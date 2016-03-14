@@ -1,0 +1,49 @@
+
+/*
+ Copyright (C)2015 International Business Machines Corporation and
+ others. All Rights Reserved.
+*/
+namespace application ;
+
+use com.ibm.streamsx.tcp::* ;
+
+composite TcpServerMain
+{
+	graph
+		stream<TcpServerStrT> TcpServerOp = TCPServer(Functor_3_out0 as inPort0Alias)
+		{
+			param
+				port : 22222u ;
+				threadPoolSize : 20u ;
+				maxUnreadResponseCount : 20000u ;
+		}
+
+		() as Sink1 = Custom(TcpServerOp)
+		{
+			logic
+				onTuple TcpServerOp :
+				{
+					printStringLn((rstring) TcpServerOp) ;
+				}
+
+		}
+
+		(stream<TcpServerStrT> Functor_3_out0) as Functor_3 = Functor(TcpServerOp)
+		{
+			logic
+				state :
+				{
+					mutable uint64 cnt = 0 ;
+				}
+
+				onTuple TcpServerOp :
+				{
+					cnt ++ ;
+				}
+
+			output
+				Functor_3_out0 : line = line + "\n" ;
+		}
+
+}
+
